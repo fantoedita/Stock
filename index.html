@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Almacén e Inventario - Sistema Store</title>
+    <style>
+        :root { 
+            --primary: #0056b3; 
+            --success: #218838; 
+            --danger: #dc3545;
+            --dark: #23272b; 
+            --light: #f4f6f9; 
+            --warning: #ffc107;
+        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: var(--light); color: #333; }
+        
+        /* Navbar Responsive */
+        .navbar { background: var(--dark); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); flex-wrap: wrap; gap: 10px; }
+        .navbar h2 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; text-align: center; justify-content: center; }
+        
+        .container { max-width: 1300px; margin: 20px auto; padding: 0 15px; display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        
+        /* Componentes Básicos */
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .card h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .input-field { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        .search-bar { width: 100%; padding: 12px; font-size: 15px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #bbb; box-sizing: border-box; }
+        
+        /* Botones Adaptables */
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; font-size: 14px; text-align: center; }
+        .btn-primary { background: var(--primary); }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        .btn-warning { background: var(--warning); color: #333; }
+        .btn:hover { opacity: 0.85; }
+        .btn-block { width: 100%; display: block; margin-top: 10px; }
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-group .btn { flex: 1; margin: 0; padding: 10px 5px; } 
+        
+        /* Tabla Responsiva */
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #ddd; border-radius: 4px; max-height: 600px; overflow-y: auto; background: white; }
+        table { width: 100%; border-collapse: collapse; margin: 0; font-size: 14px; min-width: 600px; }
+        table th, table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        table th { background: #e9ecef; position: sticky; top: 0; z-index: 10; }
+        
+        /* Grids Inteligentes */
+        .grid-precios { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 5px; }
+        .header-acciones { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        
+        /* Badges y Alertas */
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; margin-left: 5px; display: inline-block; margin-top: 4px; }
+        .bg-critico { background-color: #ffe6e6 !important; }
+        .bg-estrella { background-color: #e6ffe6 !important; }
+        .bg-urgente { background-color: #fff3cd !important; }
+
+        .legend-box { display: flex; gap: 15px; background: #eef2f5; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 5px; font-weight: bold; }
+        .legend-color { width: 15px; height: 15px; border-radius: 3px; border: 1px solid #ccc; }
+
+        /* REGLAS PARA MÓVILES */
+        @media (max-width: 900px) { 
+            .container { grid-template-columns: 1fr; } 
+        }
+        @media (max-width: 650px) {
+            .navbar { flex-direction: column; justify-content: center; text-align: center; }
+            .grid-precios { grid-template-columns: 1fr; } 
+            .btn-group { flex-direction: column; } 
+            .header-acciones { flex-direction: column; align-items: stretch; }
+            .header-acciones h3 { text-align: center; }
+            .legend-box { justify-content: center; }
+            .card { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h2>📦 Panel Central de Almacén e Inventario</h2>
+        <div style="font-weight: bold; background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; font-size: 14px;">
+            Tasa BCV Referencial: <span id="tasa-display">0.00</span> Bs
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- COLUMNA IZQUIERDA: FORMULARIO Y CARGA MASIVA -->
+        <div>
+            <div class="card" style="margin-bottom: 20px; border-top: 4px solid var(--primary);">
+                <h3 id="form-titulo">➕ Registrar / Actualizar Producto</h3>
+                <input type="hidden" id="alm-id-edicion">
+                
+                <label>Nombre del Producto:</label>
+                <input type="text" id="alm-nombre" class="input-field" placeholder="Ej: Harina Pan 1Kg">
+                
+                <label>Código de Barras:</label>
+                <input type="text" id="alm-barcode" class="input-field" placeholder="Escanee o asigne código">
+                
+                <div class="grid-precios">
+                    <div>
+                        <label>Precio Costo ($):</label>
+                        <input type="number" id="alm-costo" step="0.01" class="input-field" oninput="calcDesdeCostoOGanancia()">
+                        <small style="color: #666; font-weight: bold;" id="alm-costo-bs">0.00 Bs</small>
+                    </div>
+                    <div>
+                        <label>% Ganancia:</label>
+                        <input type="number" id="alm-porcentaje" step="0.01" class="input-field" oninput="calcDesdeCostoOGanancia()">
+                    </div>
+                    <div>
+                        <label>Precio Venta ($):</label>
+                        <input type="number" id="alm-precio" step="0.01" class="input-field" oninput="calcDesdeVenta()">
+                        <small style="color: var(--success); font-weight: bold;" id="alm-precio-bs">0.00 Bs</small>
+                    </div>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <label>Cantidad en Stock:</label>
+                    <input type="number" id="alm-stock" class="input-field" step="0.001" min="0" placeholder="Ej: 1 o 0.650">
+                </div>
+                
+                <div style="margin: 15px 0;">
+                    <label style="cursor: pointer; font-weight: bold; color: var(--danger); display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="alm-exento" style="transform: scale(1.2);"> Producto Exento de IVA (No sumar 16%)
+                    </label>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-success" id="btn-guardar-almacen" onclick="guardarProductoAlmacen()">Guardar Producto</button>
+                    <button class="btn btn-warning" id="btn-cancelar-edicion" style="display:none;" onclick="cancelarEdicionAlmacen()">Cancelar Edición</button>
+                </div>
+            </div>
+
+            <div class="card" style="border-top: 4px solid var(--dark);">
+                <h3>📋 Ingreso Masivo de Productos</h3>
+                <p style="font-size: 13px; margin-top:0; color:#555;">Fórmula: <b>NOMBRE</b> espacio <b>COSTO</b> espacio <b>PORCENTAJE</b> espacio <b>CANTIDAD</b> espacio <b>E</b></p>
+                <p style="font-size: 11px; color:var(--primary); font-weight:bold; margin-top:-5px;">(Coloque una "E" al final solo si el producto es Exento de IVA. El Precio de Venta se calcula solo.)</p>
+                
+                <textarea id="alm-masivo-texto" class="input-field" rows="4" placeholder="Ejemplos:&#10;Harina Pan Amarilla 1.20 30% 50 E&#10;Queso Blanco 3.50 40 10.5"></textarea>
+                <button class="btn btn-primary btn-block" onclick="procesarIngresoMasivo()">Cargar Lista Masiva</button>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: TABLA GLOBAL DE INVENTARIO -->
+        <div class="card">
+            <div class="header-acciones">
+                <h3 style="margin:0; border:none; padding:0;">Control de Inventario</h3>
+                <div class="btn-group" style="margin:0;">
+                    <button class="btn btn-success" onclick="exportarInventario()" style="font-size: 12px; border-radius: 4px 0 0 4px;">💾 Respaldar</button>
+                    <button class="btn btn-primary" onclick="document.getElementById('file-cargar-inventario').click()" style="font-size: 12px; border-radius: 0;">📂 Cargar</button>
+                    <input type="file" id="file-cargar-inventario" accept=".txt" style="display:none" onchange="importarInventario(event)">
+                    <button class="btn btn-danger" onclick="eliminarTodoElInventario()" style="font-size: 12px; background: #8b0000; border-radius: 0 4px 4px 0;">🗑️ BORRAR TODO</button>
+                </div>
+            </div>
+
+            <div class="legend-box" style="margin-top: 15px;">
+                <div class="legend-item"><div class="legend-color" style="background: #e6ffe6;"></div> Más Vendido</div>
+                <div class="legend-item"><div class="legend-color" style="background: #ffe6e6;"></div> Stock Crítico (<=20)</div>
+                <div class="legend-item"><div class="legend-color" style="background: #fff3cd;"></div> Más Vendido + Crítico</div>
+            </div>
+            
+            <input type="text" id="almacen-buscar" class="search-bar" placeholder="🔍 Buscar por nombre o código de barras..." oninput="filtrarAlmacenTabla()">
+            <p style="font-size: 12px; color: #666; margin: 0 0 10px 0;">💡 <i>Presione <b>doble clic</b> sobre la fila de cualquier producto para editarlo. Deslice la tabla hacia los lados si está en su celular.</i></p>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Producto / Código</th>
+                            <th>Costos / Precios</th>
+                            <th>Stock</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="almacen-tabla-cuerpo">
+                        <tr><td colspan="4" style="text-align:center;">Cargando base de datos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de Firebase y Lógica -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, get, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCgFJVToluiG3I-Lxml6cXmP-f2pMb0rxg",
+            authDomain: "sistema-store.firebaseapp.com",
+            projectId: "sistema-store",
+            storageBucket: "sistema-store.firebasestorage.app",
+            messagingSenderId: "1083764921833",
+            appId: "1:1083764921833:web:a9bc5dd175b55bead76778",
+            measurementId: "G-L1M6PE57JF"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let productosCache = {};
+        let facturasCache = {};
+        let tasaBcv = 0;
+        let productoMasVendidoId = null;
+
+        window.onload = () => {
+            obtenerTasaBCVOficial();
+            
+            onValue(ref(db, 'almacen'), (snapshot) => {
+                productosCache = snapshot.val() || {};
+                renderizarAlmacen();
+            });
+
+            onValue(ref(db, 'facturas'), (snapshot) => {
+                facturasCache = snapshot.val() || {};
+                calcularMasVendido();
+                renderizarAlmacen();
+            });
+        };
+
+        async function obtenerTasaBCVOficial() {
+            try {
+                const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                const data = await res.json();
+                tasaBcv = parseFloat(data.promedio || data.precio || 0);
+                document.getElementById('tasa-display').innerText = tasaBcv.toFixed(2);
+            } catch (e) {
+                console.log("Fallo al consultar Tasa BCV");
+            }
+        }
+
+        function calcularMasVendido() {
+            let ventasPorProducto = {};
+            
+            for (let key in facturasCache) {
+                let f = facturasCache[key];
+                if (f.items) {
+                    f.items.forEach(item => {
+                        if (!ventasPorProducto[item.id]) ventasPorProducto[item.id] = 0;
+                        ventasPorProducto[item.id] += item.cantidad;
+                    });
+                }
+            }
+
+            let maxVentas = 0;
+            productoMasVendidoId = null;
+
+            for (let id in ventasPorProducto) {
+                if (ventasPorProducto[id] > maxVentas) {
+                    maxVentas = ventasPorProducto[id];
+                    productoMasVendidoId = id;
+                }
+            }
+        }
+
+        function renderizarAlmacen() {
+            const tbody = document.getElementById('almacen-tabla-cuerpo');
+            tbody.innerHTML = '';
+            
+            let htmlContent = '';
+
+            for(let key in productosCache) {
+                const p = productosCache[key];
+                const barcodeDisplay = p.codigoBarras ? `<br><small style="color:#666;">Code: ${p.codigoBarras}</small>` : '';
+                const ivaTag = p.exento ? `<br><span class="badge" style="background:#6c757d;">Exento IVA</span>` : '';
+                
+                let isBajoStock = p.stock <= 20;
+                let isMasVendido = (key === productoMasVendidoId && productoMasVendidoId !== null);
+                
+                let filaClase = "";
+                let tagsAdicionales = "";
+
+                if (isBajoStock && isMasVendido) {
+                    filaClase = "bg-urgente";
+                    tagsAdicionales = `<br><span class="badge" style="background:#ffc107; color:#333;">⚡ URGENTE: Mejor vendido agotándose</span>`;
+                } else if (isBajoStock) {
+                    filaClase = "bg-critico";
+                    tagsAdicionales = `<br><span class="badge" style="background:#dc3545;">⚠️ STOCK CRÍTICO</span>`;
+                } else if (isMasVendido) {
+                    filaClase = "bg-estrella";
+                    tagsAdicionales = `<br><span class="badge" style="background:#28a745;">⭐ MÁS VENDIDO</span>`;
+                }
+
+                htmlContent += `
+                    <tr class="row-almacen-item ${filaClase}" data-name="${p.nombre.toLowerCase()} ${p.codigoBarras || ''}" ondblclick="cargarProductoParaEditar('${key}')" title="Doble clic para editar" style="cursor: pointer; transition: 0.2s;">
+                        <td>
+                            <b style="color:var(--primary); font-size:15px;">${p.nombre}</b> 
+                            ${tagsAdicionales} ${ivaTag}
+                            ${barcodeDisplay}
+                        </td>
+                        <td>
+                            <span style="font-size:13px; color:#555;">Costo: <b>$${(p.costo || 0).toFixed(2)}</b></span><br>
+                            <span style="font-size:13px; color:#555;">Venta: <b style="color:var(--success);">$${p.precio.toFixed(2)}</b></span>
+                        </td>
+                        <td>
+                            <span style="font-size:18px; font-weight:bold; ${isBajoStock ? 'color:#dc3545;' : ''}">${p.stock}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-danger" style="padding:5px 10px; font-size:12px;" onclick="event.stopPropagation(); eliminarProductoAlmacen('${key}')">🗑️ Borrar</button>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            if (htmlContent === '') {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">El almacén está vacío.</td></tr>';
+            } else {
+                tbody.innerHTML = htmlContent;
+            }
+        }
+
+        window.filtrarAlmacenTabla = function() {
+            const val = document.getElementById('almacen-buscar').value.toLowerCase();
+            document.querySelectorAll('.row-almacen-item').forEach(row => {
+                row.style.display = row.getAttribute('data-name').includes(val) ? '' : 'none';
+            });
+        };
+
+        window.calcDesdeCostoOGanancia = function() {
+            const costo = parseFloat(document.getElementById('alm-costo').value) || 0;
+            const porcentaje = parseFloat(document.getElementById('alm-porcentaje').value) || 0;
+            
+            let precioVenta = costo;
+            if (costo > 0 && porcentaje > 0) {
+                precioVenta = costo + (costo * (porcentaje / 100));
+            }
+            
+            document.getElementById('alm-precio').value = precioVenta > 0 ? precioVenta.toFixed(2) : '';
+            if(tasaBcv > 0) {
+                document.getElementById('alm-costo-bs').innerText = (costo * tasaBcv).toFixed(2) + ' Bs';
+                document.getElementById('alm-precio-bs').innerText = ((precioVenta || 0) * tasaBcv).toFixed(2) + ' Bs';
+            }
+        };
+
+        window.calcDesdeVenta = function() {
+            const costo = parseFloat(document.getElementById('alm-costo').value) || 0;
+            const precioVenta = parseFloat(document.getElementById('alm-precio').value) || 0;
+            
+            if (costo > 0 && precioVenta > costo) {
+                const porcentaje = ((precioVenta - costo) / costo) * 100;
+                document.getElementById('alm-porcentaje').value = porcentaje.toFixed(2);
+            } else if (costo > 0 && precioVenta <= costo) {
+                document.getElementById('alm-porcentaje').value = '0.00';
+            }
+            
+            if(tasaBcv > 0) {
+                document.getElementById('alm-costo-bs').innerText = (costo * tasaBcv).toFixed(2) + ' Bs';
+                document.getElementById('alm-precio-bs').innerText = (precioVenta * tasaBcv).toFixed(2) + ' Bs';
+            }
+        };
+
+        window.guardarProductoAlmacen = function() {
+            const id = document.getElementById('alm-id-edicion').value;
+            const nombre = document.getElementById('alm-nombre').value.trim();
+            const codigoBarras = document.getElementById('alm-barcode').value.trim() || "";
+            const costo = parseFloat(document.getElementById('alm-costo').value) || 0;
+            const porcentaje = parseFloat(document.getElementById('alm-porcentaje').value) || 0;
+            const precio = parseFloat(document.getElementById('alm-precio').value);
+            const stock = parseFloat(document.getElementById('alm-stock').value);
+            const exento = document.getElementById('alm-exento') ? document.getElementById('alm-exento').checked : false;
+
+            if(!nombre || isNaN(precio) || isNaN(stock)) return alert("Complete los datos principales del producto (Nombre, Precio Venta y Stock).");
+
+            const prodData = { nombre, codigoBarras, costo, porcentaje, precio, stock, exento };
+            
+            if(id) {
+                set(ref(db, `almacen/${id}`), prodData).then(() => {
+                    alert("Producto actualizado correctamente.");
+                    cancelarEdicionAlmacen();
+                });
+            } else {
+                push(ref(db, 'almacen'), prodData).then(() => {
+                    cancelarEdicionAlmacen();
+                });
+            }
+        };
+
+        window.cargarProductoParaEditar = function(key) {
+            const p = productosCache[key];
+            document.getElementById('alm-id-edicion').value = key;
+            document.getElementById('alm-nombre').value = p.nombre;
+            document.getElementById('alm-barcode').value = p.codigoBarras || '';
+            document.getElementById('alm-costo').value = p.costo || '';
+            document.getElementById('alm-porcentaje').value = p.porcentaje || '';
+            document.getElementById('alm-precio').value = p.precio;
+            document.getElementById('alm-stock').value = p.stock;
+            if(document.getElementById('alm-exento')) document.getElementById('alm-exento').checked = p.exento || false;
+            
+            calcDesdeCostoOGanancia();
+            
+            document.getElementById('form-titulo').innerText = "✏️ Editando Producto";
+            document.getElementById('btn-guardar-almacen').innerText = "Actualizar Cambios";
+            document.getElementById('btn-cancelar-edicion').style.display = 'inline-block';
+            window.scrollTo(0,0);
+        };
+
+        window.cancelarEdicionAlmacen = function() {
+            document.getElementById('alm-id-edicion').value = '';
+            document.getElementById('alm-nombre').value = '';
+            document.getElementById('alm-barcode').value = '';
+            document.getElementById('alm-costo').value = '';
+            document.getElementById('alm-porcentaje').value = '';
+            document.getElementById('alm-precio').value = '';
+            document.getElementById('alm-stock').value = '';
+            if(document.getElementById('alm-exento')) document.getElementById('alm-exento').checked = false;
+            document.getElementById('alm-costo-bs').innerText = '0.00 Bs';
+            document.getElementById('alm-precio-bs').innerText = '0.00 Bs';
+            
+            document.getElementById('form-titulo').innerText = "➕ Registrar / Actualizar Producto";
+            document.getElementById('btn-guardar-almacen').innerText = "Guardar Producto";
+            document.getElementById('btn-cancelar-edicion').style.display = 'none';
+        };
+
+        window.eliminarProductoAlmacen = function(key) {
+            if(confirm("¿Estás seguro que deseas eliminar este producto permanentemente del inventario?")) {
+                remove(ref(db, `almacen/${key}`));
+            }
+        };
+
+        window.eliminarTodoElInventario = function() {
+            if(confirm("⚠️ ADVERTENCIA EXTREMA ⚠️\n\nEstás a punto de ELIMINAR TODOS LOS PRODUCTOS del sistema. Esta acción borrará permanentemente todo tu almacén y no se puede deshacer.\n\n¿Estás absolutamente seguro de querer vaciar la base de datos?")) {
+                let password = prompt("Para confirmar, por favor escribe la frase: BORRAR TODO");
+                if (password === 'BORRAR TODO') {
+                    remove(ref(db, 'almacen')).then(() => {
+                        alert("✅ El inventario ha sido vaciado por completo.");
+                    }).catch(err => alert("Error al eliminar: " + err.message));
+                } else {
+                    alert("❌ Acción cancelada. La frase de seguridad no coincide.");
+                }
+            }
+        };
+
+        // --- NUEVA LÓGICA DE INGRESO MASIVO CON DETECCIÓN DE 'E' (EXENTO DE IVA) ---
+        window.procesarIngresoMasivo = function() {
+            const texto = document.getElementById('alm-masivo-texto').value.trim();
+            if(!texto) return alert("Por favor, ingrese los productos en el cuadro de texto.");
+
+            const lineas = texto.split('\n');
+            let agregados = 0;
+            let errores = 0;
+
+            lineas.forEach(linea => {
+                if(!linea.trim()) return;
+                
+                const partes = linea.trim().split(/\s+/);
+                
+                let exento = false;
+                
+                // Si la última parte es una 'E' (indiferente de si es mayúscula o minúscula), es exento.
+                if(partes[partes.length - 1].toUpperCase() === 'E') {
+                    exento = true;
+                    partes.pop(); // Sacamos la 'E' del final para seguir extrayendo
+                }
+
+                // Necesitamos por lo menos: Nombre, Costo, Porcentaje y Cantidad (Mínimo 4 partes)
+                if(partes.length < 4) {
+                    errores++;
+                    return;
+                }
+
+                // Extraemos de atrás hacia adelante
+                const cantidadStr = partes.pop();
+                let porcentajeStr = partes.pop();
+                const costoStr = partes.pop();
+                
+                // Lo que sobra es el nombre completo (puede tener varias palabras)
+                const nombre = partes.join(' ').trim();
+
+                // Limpiar posibles símbolos de % que ponga el usuario
+                porcentajeStr = porcentajeStr.replace('%', '');
+
+                const cantidad = parseFloat(cantidadStr.replace(',', '.'));
+                const porcentaje = parseFloat(porcentajeStr.replace(',', '.'));
+                const costo = parseFloat(costoStr.replace(',', '.')); 
+
+                if(!nombre || isNaN(costo) || isNaN(porcentaje) || isNaN(cantidad)) {
+                    errores++;
+                    return;
+                }
+
+                // Cálculo automático del precio de venta final
+                let precioVentaCalculado = costo + (costo * (porcentaje / 100));
+                precioVentaCalculado = parseFloat(precioVentaCalculado.toFixed(2));
+
+                const prodData = { 
+                    nombre: nombre, 
+                    codigoBarras: "", 
+                    costo: costo,
+                    porcentaje: porcentaje,
+                    precio: precioVentaCalculado, 
+                    stock: cantidad,
+                    exento: exento // Producto exento detectado por la fórmula
+                };
+                
+                push(ref(db, 'almacen'), prodData);
+                agregados++;
+            });
+
+            alert(`Proceso finalizado.\n✅ Productos calculados y agregados: ${agregados}\n⚠️ Líneas con errores (omitidas): ${errores}`);
+            document.getElementById('alm-masivo-texto').value = '';
+        };
+
+        window.exportarInventario = function() {
+            get(ref(db, 'almacen')).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const dataStr = JSON.stringify(snapshot.val(), null, 2);
+                    const blob = new Blob([dataStr], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    
+                    const f = new Date();
+                    link.download = `Respaldo_Almacen_${f.getDate()}-${f.getMonth()+1}.txt`;
+                    link.click();
+                } else {
+                    alert("El almacén está vacío, no hay nada que respaldar.");
+                }
+            });
+        };
+
+        window.importarInventario = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if(!confirm("⚠️ ATENCIÓN ⚠️\n\nAl cargar un respaldo se reemplazará y borrará todo tu inventario actual en el servidor.\n\n¿Estás seguro de continuar?")) {
+                event.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const datos = JSON.parse(e.target.result);
+                    
+                    if (typeof datos !== 'object' || datos === null) throw new Error("Estructura de archivo inválida.");
+                    
+                    set(ref(db, 'almacen'), datos).then(() => {
+                        alert("✅ Inventario cargado y sincronizado con el servidor exitosamente.");
+                    }).catch(err => alert("Error de servidor al subir los datos: " + err.message));
+                    
+                } catch (err) {
+                    alert("❌ Error: El archivo seleccionado no es válido o está corrupto.");
+                }
+                event.target.value = ''; // Resetear el input file
+            };
+            reader.readAsText(file);
+        };
+    </script>
+</body>
+</html>
